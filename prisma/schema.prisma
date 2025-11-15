@@ -9,25 +9,54 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")  
 }
 
-model Task {
-  id          String     @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus @default(PENDING)
-  dueDate     DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+model Location {
+  id          String    @id @default(uuid())
+  name        String
+  coordinates String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  spaces      Space[]
 
-  @@map("tasks")
-  @@index([status])
+  @@map("locations")
+  @@unique([name, coordinates])
 }
 
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  DONE
+model Space {
+  id           String      @id @default(uuid())
+  name         String
+  reference    String?
+  capacity     Int
+  description  String?
+  locationId   String
+  location     Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("spaces")
+  @@index([locationId])
+  @@unique([locationId, name])
+}
+
+model Reservation {
+  id            String   @id @default(uuid())
+  spaceId       String
+  space         Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  locationId    String?
+  clientEmail   String
+  reservationAt DateTime
+  startsAt      DateTime
+  endsAt        DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("reservations")
+  @@index([spaceId])
+  @@index([locationId])
+  @@index([clientEmail])
 }
