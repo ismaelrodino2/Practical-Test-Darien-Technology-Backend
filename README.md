@@ -41,6 +41,7 @@ Node.js/TypeScript API that follows a lightweight MVC structure, using Express +
 - `Reservation`: a client's request to book a space on a certain date/time window.
 - Time conflicts are blocked: the same space cannot be reserved for overlapping intervals.
 - Each client (email) can have **at most 3 active reservations per week** (Monday 00:00 → Sunday 23:59 UTC).
+- Reservation times (`reservationAt`, `startsAt`, `endsAt`) must be in the future.
 
 See `prisma/schema.prisma` for relationships and indexes.
 

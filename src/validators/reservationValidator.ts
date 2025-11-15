@@ -48,6 +48,16 @@ export function validateReservationPayload(
     throw createHttpError("startsAt must be earlier than endsAt.", 422);
   }
 
+  const now = new Date();
+
+  if (reservationDate < now) {
+    throw createHttpError("Reservation must be in the future.", 422);
+  }
+
+  if (startsDate < now || endsDate < now) {
+    throw createHttpError("Reservation times must be in the future.", 422);
+  }
+
   return {
     spaceId,
     locationId,
