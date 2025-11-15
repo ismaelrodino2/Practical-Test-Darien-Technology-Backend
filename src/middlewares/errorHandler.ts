@@ -1,8 +1,8 @@
 import { ErrorRequestHandler } from "express";
-import HttpError from "../utils/httpError";
+import { isHttpError } from "../utils/httpError";
 
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
-  if (error instanceof HttpError) {
+  if (isHttpError(error)) {
     return res.status(error.statusCode).json({
       message: error.message,
     });
@@ -11,7 +11,7 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   console.error(error);
 
   return res.status(500).json({
-    message: "Erro interno do servidor.",
+    message: "Internal server error.",
   });
 };
 
