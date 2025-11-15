@@ -8,6 +8,8 @@ RUN npm install -g corepack@latest \
 
 FROM base AS builder
 ENV NODE_ENV=development
+ARG PRISMA_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres?schema=public"
+ENV DATABASE_URL=${PRISMA_DATABASE_URL}
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
@@ -17,6 +19,7 @@ RUN pnpm prune --prod
 
 FROM base AS runner
 ENV NODE_ENV=production
+ENV DATABASE_URL=""
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
