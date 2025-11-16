@@ -8,7 +8,16 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "jest --testPathIgnorePatterns=e2e --testPathIgnorePatterns=integration",
+    "test:watch": "jest --watch --testPathIgnorePatterns=e2e --testPathIgnorePatterns=integration",
+    "test:coverage": "jest --coverage --testPathIgnorePatterns=e2e --testPathIgnorePatterns=integration",
+    "test:integration": "jest --testPathPatterns=integration",
+    "test:e2e:setup": "docker compose -f docker-compose.test.yml up -d",
+    "test:e2e:teardown": "docker compose -f docker-compose.test.yml down",
+    "test:e2e:migrate": "prisma migrate deploy",
+    "test:e2e:run": "jest --testPathPatterns=e2e --setupFilesAfterEnv=./src/__tests__/e2e/setup.ts",
+    "test:all": "jest"
   },
   "keywords": [],
   "author": "",
@@ -18,14 +27,22 @@
     "@prisma/client": "^6.19.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mqtt": "^5.14.1",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "@types/supertest": "^6.0.3",
+    "@types/ws": "^8.18.1",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "prisma": "^6.19.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

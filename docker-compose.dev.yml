@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-3009}:3009"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: pnpm run dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+

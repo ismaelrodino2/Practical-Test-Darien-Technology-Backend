@@ -2,20 +2,22 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredVariables = ["DATABASE_URL"] as const;
+const requiredVariables = ["DATABASE_URL", "API_KEY"] as const;
 
 const missingVariables = requiredVariables.filter((key) => !process.env[key]);
 
 if (missingVariables.length > 0) {
   console.warn(
-    `Aviso: variáveis de ambiente ausentes -> ${missingVariables.join(", ")}`,
+    `Warning: missing environment variables -> ${missingVariables.join(", ")}`,
   );
 }
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
-  port: Number(process.env.PORT ?? 3000),
+  port: Number(process.env.PORT ?? 3009),
   databaseUrl: process.env.DATABASE_URL ?? "",
+  apiKey: process.env.API_KEY ?? "",
+  mqttUrl: process.env.MQTT_URL ?? "mqtt://localhost:1883",
 };
 
 export default env;

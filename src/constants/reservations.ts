@@ -1,0 +1,2 @@
+export const MAX_WEEKLY_RESERVATIONS = 3;
+

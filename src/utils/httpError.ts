@@ -1,9 +1,18 @@
-export default class HttpError extends Error {
-  public readonly statusCode: number;
+export type HttpError = Error & { statusCode: number };
 
-  constructor(message: string, statusCode = 500) {
-    super(message);
-    this.statusCode = statusCode;
-  }
+export function createHttpError(
+  message: string,
+  statusCode = 500,
+): HttpError {
+  const error = new Error(message) as HttpError;
+  error.name = "HttpError";
+  error.statusCode = statusCode;
+  return error;
 }
 
+export function isHttpError(error: unknown): error is HttpError {
+  return (
+    error instanceof Error &&
+    typeof (error as Partial<HttpError>).statusCode === "number"
+  );
+}
