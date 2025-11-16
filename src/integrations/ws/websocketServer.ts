@@ -1,5 +1,6 @@
-import type { Server as HttpServer } from "node:http";
+import type { Server as HttpServer, IncomingMessage } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
+import { env } from "../../config/env";
 
 let wss: WebSocketServer | null = null;
 
@@ -11,6 +12,17 @@ export const initWebSocketServer = (httpServer: HttpServer): WebSocketServer => 
   wss = new WebSocketServer({
     server: httpServer,
     path: "/telemetry",
+    verifyClient: (info: { req: IncomingMessage }) => {
+      const url = new URL(info.req.url || "", `http://${info.req.headers.host}`);
+      const apiKey = url.searchParams.get("x-api-key");
+
+      if (!apiKey || apiKey !== env.apiKey) {
+        console.warn("[WS] Connection rejected: Invalid or missing API key");
+        return false;
+      }
+
+      return true;
+    },
   });
 
   wss.on("connection", (socket: WebSocket) => {
