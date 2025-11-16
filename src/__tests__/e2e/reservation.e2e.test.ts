@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../../app";
 import prisma from "../../config/prismaClient";
+import { closeMqttClient } from "../../integrations/mqtt/mqttClient";
 
 /**
  * E2E Tests for Reservations
@@ -48,6 +49,10 @@ describe("Reservation E2E Tests", () => {
     ]);
 
     await prisma.$disconnect();
+    
+    // Close MQTT client to prevent Jest warning about open handles
+    await closeMqttClient();
+    
     console.log("✨ Database cleaned after tests");
   });
 

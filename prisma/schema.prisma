@@ -11,36 +11,36 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")  
+  directUrl = env("DIRECT_URL")
 }
 
 model Location {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   coordinates String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   spaces      Space[]
 
-  @@map("locations")
   @@unique([name, coordinates])
+  @@map("locations")
 }
 
 model Space {
-  id           String      @id @default(uuid())
+  id           String        @id @default(uuid())
   name         String
   reference    String?
   capacity     Int
   description  String?
   locationId   String
-  location     Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  location     Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
   reservations Reservation[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  @@map("spaces")
-  @@index([locationId])
   @@unique([locationId, name])
+  @@index([locationId])
+  @@map("spaces")
 }
 
 model Reservation {
@@ -52,11 +52,33 @@ model Reservation {
   reservationAt DateTime
   startsAt      DateTime
   endsAt        DateTime
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@map("reservations")
   @@index([spaceId])
   @@index([locationId])
   @@index([clientEmail])
+  @@map("reservations")
+}
+
+model DeviceDesired {
+  id                  String   @id @default(uuid())
+  officeId            String   @unique
+  samplingIntervalSec Int
+  co2_alert_threshold Int
+  updatedAt           DateTime @updatedAt
+
+  @@index([officeId])
+  @@map("device_desired")
+}
+
+model DeviceReported {
+  id                  String   @id @default(uuid())
+  officeId            String   @unique
+  samplingIntervalSec Int?
+  co2_alert_threshold Int?
+  updatedAt           DateTime @updatedAt
+
+  @@index([officeId])
+  @@map("device_reported")
 }
