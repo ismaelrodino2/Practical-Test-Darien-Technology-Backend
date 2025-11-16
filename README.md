@@ -15,7 +15,8 @@ Node.js/TypeScript API that follows a lightweight MVC structure, using Express +
    ```
 2. Paste the Supabase `DATABASE_URL` (Project Settings → Database → Connection string → URI) into `.env`.
 3. Configure an `API_KEY` value in `.env`. The same value must be used by every client when calling the API.
-4. Change `PORT` if you need another port (defaults to `3009` so the backend stays off the common `3000` frontend port).
+4. Set `MQTT_URL` if you are running the IoT simulator on a different host/port (defaults to `mqtt://localhost:1883`).
+5. Change `PORT` if you need another port (defaults to `3009` so the backend stays off the common `3000` frontend port).
 
 ## Scripts
 
@@ -65,6 +66,26 @@ curl -X GET http://localhost:3009/api/spaces \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY"
 ```
+
+## MQTT Simulator Integration (Step 1)
+
+This project now includes the minimal wiring needed to consume the telemetry published by the Darien IoT simulator.
+
+1. **Start the local broker (from the `iot-simulator` project):**
+   ```bash
+   cd ../iot-simulator
+   docker compose -f docker.compose.yml up -d
+   ```
+2. **Run one simulator instance (still inside `iot-simulator`):**
+   ```bash
+   node index.js --site-id SITE_A --office-id OFFICE_1
+   ```
+   You can launch multiple instances with different IDs if needed.
+3. **Boot the backend subscriber (from `challenge-backend`):**
+   ```bash
+   pnpm dev
+   ```
+4. **Verify logs:** the backend subscribes to `sites/SITE_A/offices/OFFICE_1/telemetry` and prints incoming JSON payloads as `Telemetry received: ...`. If you stop the broker, the MQTT client automatically attempts to reconnect using the `MQTT_URL` configured in your `.env`.
 
 ## Docker
 

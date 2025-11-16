@@ -17,6 +17,7 @@ export const env = {
   port: Number(process.env.PORT ?? 3009),
   databaseUrl: process.env.DATABASE_URL ?? "",
   apiKey: process.env.API_KEY ?? "",
+  mqttUrl: process.env.MQTT_URL ?? "mqtt://localhost:1883",
 };
 
 export default env;

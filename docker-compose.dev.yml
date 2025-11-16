@@ -11,4 +11,6 @@ services:
       - ./:/app
       - /app/node_modules
     command: pnpm run dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
