@@ -17,6 +17,7 @@ datasource db {
 model Location {
   id          String   @id @default(uuid())
   name        String
+  siteExternalId String @unique
   coordinates String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -31,6 +32,7 @@ model Space {
   name         String
   reference    String?
   capacity     Int
+  officeExternalId String @unique
   description  String?
   locationId   String
   location     Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)

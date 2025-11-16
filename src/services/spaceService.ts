@@ -4,6 +4,7 @@ import { createHttpError } from "../utils/httpError";
 export type SpacePayload = {
   locationId: string;
   name: string;
+  officeExternalId: string;
   reference?: string;
   capacity: number;
   description?: string;

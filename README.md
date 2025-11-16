@@ -108,3 +108,28 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 
 This setup mounts the workspace into `/app` and keeps `/app/node_modules` inside the container, so local edits trigger automatic restarts without reinstalling dependencies. The default exposed port is `3009`, so the backend stays separate from a frontend running on `3000`.
+
+
+## Running the IoT Simulator
+
+This project uses external IDs to map the simulator to the database.
+
+### Locations
+- SITE_A → Location “Edifício Central”
+- SITE_B → Location “Unidade Norte”
+
+### Spaces
+- OFFICE_1 → Sala Reunião A1
+- OFFICE_2 → Sala Reunião A2
+- OFFICE_3 → Coworking B1
+- OFFICE_4 → Sala Privativa B2
+
+### How to run the simulator
+
+SITE_A:
+    node index.js --site-id SITE_A --office-id OFFICE_1
+    node index.js --site-id SITE_A --office-id OFFICE_2
+
+SITE_B:
+    node index.js --site-id SITE_B --office-id OFFICE_3
+    node index.js --site-id SITE_B --office-id OFFICE_4

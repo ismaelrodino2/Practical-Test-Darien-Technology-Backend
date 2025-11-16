@@ -1,7 +1,33 @@
 import { Request, Response } from "express";
-import { upsertDeviceDesired } from "../services/deviceService";
+import {
+  upsertDeviceDesired,
+  getDeviceDesired,
+  getDeviceReported,
+  publishDesiredToMQTT,
+} from "../services/deviceService";
 import { validateDeviceDesiredPayload } from "../validators/deviceValidator";
-import { getMqttClient } from "../integrations/mqtt/mqttClient";
+
+export async function getDeviceDesiredHandler(req: Request, res: Response) {
+  const { officeId } = req.params;
+  const desired = await getDeviceDesired(officeId);
+
+  if (!desired) {
+    return res.status(404).json({ error: "Desired configuration not found" });
+  }
+
+  return res.json(desired);
+}
+
+export async function getDeviceReportedHandler(req: Request, res: Response) {
+  const { officeId } = req.params;
+  const reported = await getDeviceReported(officeId);
+
+  if (!reported) {
+    return res.status(404).json({ error: "Reported state not found" });
+  }
+
+  return res.json(reported);
+}
 
 export async function updateDeviceDesiredHandler(
   req: Request,
@@ -15,27 +41,13 @@ export async function updateDeviceDesiredHandler(
   const deviceDesired = await upsertDeviceDesired(officeId, payload);
 
   // Publicar no MQTT com retain: true
-  // siteId pode vir do query param ou usar padrão
   const site = (typeof siteId === "string" ? siteId : null) || "SITE_A";
-  const topic = `sites/${site}/offices/${officeId}/desired`;
-  const mqttPayload = {
-    samplingIntervalSec: payload.samplingIntervalSec,
-    co2_alert_threshold: payload.co2_alert_threshold,
-  };
-
-  const mqttClient = getMqttClient();
-  mqttClient.publish(
-    topic,
-    JSON.stringify(mqttPayload),
-    { retain: true },
-    (error) => {
-      if (error) {
-        console.error("[MQTT] Failed to publish desired state:", error.message);
-      } else {
-        console.log(`[MQTT] Published desired state to ${topic}`);
-      }
-    },
-  );
+  try {
+    await publishDesiredToMQTT(officeId, site, payload);
+  } catch (error) {
+    // Log error but don't fail the request
+    console.error("[MQTT] Failed to publish desired state:", error);
+  }
 
   return res.json(deviceDesired);
 }
