@@ -1,0 +1,22 @@
+# Docker Compose for E2E tests
+# Based on Prisma documentation: https://www.prisma.io/docs/orm/prisma-client/testing/integration-testing
+
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    container_name: e2e-tests-prisma
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: prisma
+      POSTGRES_PASSWORD: prisma
+      POSTGRES_DB: tests
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prisma"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
