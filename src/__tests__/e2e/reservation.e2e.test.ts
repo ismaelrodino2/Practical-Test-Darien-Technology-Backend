@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../../app";
 import prisma from "../../config/prismaClient";
+import { closeMqttClient } from "../../integrations/mqtt/mqttClient";
 
 /**
  * E2E Tests for Reservations
@@ -48,6 +49,10 @@ describe("Reservation E2E Tests", () => {
     ]);
 
     await prisma.$disconnect();
+    
+    // Close MQTT client to prevent Jest warning about open handles
+    await closeMqttClient();
+    
     console.log("✨ Database cleaned after tests");
   });
 
@@ -62,12 +67,14 @@ describe("Reservation E2E Tests", () => {
     const locationData = {
       name: "E2E Test Location",
       coordinates: "40.7128,-74.0060",
+      siteExternalId: "E2E_TEST_SITE",
     };
 
     const spaceData = {
       name: "E2E Test Space",
       capacity: 15,
       description: "E2E test space description",
+      officeExternalId: "E2E_TEST_OFFICE",
     };
 
     const reservationData = {
@@ -164,9 +171,9 @@ describe("Reservation E2E Tests", () => {
 
     expect(listResponse.status).toBe(200);
     expect(listResponse.body).toHaveProperty("data");
-    expect(listResponse.body).toHaveProperty("meta");
+    expect(listResponse.body).toHaveProperty("pagination");
     expect(Array.isArray(listResponse.body.data)).toBe(true);
-    expect(listResponse.body.meta.total).toBeGreaterThanOrEqual(1);
+    expect(listResponse.body.pagination.total).toBeGreaterThanOrEqual(1);
 
     const foundReservation = listResponse.body.data.find(
       (r: any) => r.id === reservationId,
@@ -199,6 +206,7 @@ describe("Reservation E2E Tests", () => {
       data: {
         name: "Business Rules Location",
         coordinates: "40.7128,-74.0060",
+        siteExternalId: "BUSINESS_RULES_SITE",
       },
     });
 
@@ -207,6 +215,7 @@ describe("Reservation E2E Tests", () => {
         name: "Business Rules Space",
         locationId: location.id,
         capacity: 10,
+        officeExternalId: "BUSINESS_RULES_OFFICE",
       },
     });
 
@@ -238,7 +247,7 @@ describe("Reservation E2E Tests", () => {
 
     expect(conflictingReservation.status).toBe(409);
     expect(conflictingReservation.body.message).toContain(
-      "already reserved in the selected time range",
+      "already a reservation for this time slot",
     );
   });
 });
