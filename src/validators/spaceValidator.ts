@@ -3,6 +3,7 @@ import { createHttpError } from "../utils/httpError";
 interface SpacePayload {
   locationId: string;
   name: string;
+  officeExternalId: string;
   reference?: string;
   capacity: number;
   description?: string;
@@ -13,7 +14,7 @@ export function validateSpacePayload(body: Record<string, unknown>): SpacePayloa
     throw createHttpError("Invalid payload.", 400);
   }
 
-  const { locationId, name, reference, capacity, description } =
+  const { locationId, name, officeExternalId, reference, capacity, description } =
     body as Partial<SpacePayload>;
 
   if (!locationId || typeof locationId !== "string") {
@@ -22,6 +23,10 @@ export function validateSpacePayload(body: Record<string, unknown>): SpacePayloa
 
   if (!name || typeof name !== "string" || name.trim().length === 0) {
     throw createHttpError("name is required.", 422);
+  }
+
+  if (!officeExternalId || typeof officeExternalId !== "string" || officeExternalId.trim().length === 0) {
+    throw createHttpError("officeExternalId is required.", 422);
   }
 
   if (
@@ -35,6 +40,7 @@ export function validateSpacePayload(body: Record<string, unknown>): SpacePayloa
   return {
     locationId,
     name: name.trim(),
+    officeExternalId: officeExternalId.trim(),
     reference: reference?.trim(),
     capacity,
     description: description?.trim(),

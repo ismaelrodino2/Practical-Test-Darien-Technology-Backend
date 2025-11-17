@@ -4,6 +4,7 @@ import { createHttpError } from "../utils/httpError";
 export type SpacePayload = {
   locationId: string;
   name: string;
+  officeExternalId: string;
   reference?: string;
   capacity: number;
   description?: string;
@@ -52,6 +53,13 @@ export async function updateSpace(id: string, payload: SpacePayload) {
 export async function deleteSpace(id: string) {
   await getSpaceById(id);
   await prisma.space.delete({ where: { id } });
+}
+
+export async function getSpaceByOfficeExternalId(officeExternalId: string) {
+  return prisma.space.findUnique({
+    where: { officeExternalId },
+    include: { location: true },
+  });
 }
 
 async function ensureLocationExists(locationId: string) {

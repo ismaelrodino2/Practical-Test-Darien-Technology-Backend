@@ -40,7 +40,11 @@ export function validateReservationPayload(
     throw createHttpError("clientEmail is required.", 422);
   }
 
-  const reservationDate = parseDate(reservationAt, "reservationAt");
+  // If reservationAt is not provided, use today's date
+  const reservationDate = reservationAt
+    ? parseDate(reservationAt, "reservationAt")
+    : new Date();
+  
   const startsDate = parseDate(startsAt, "startsAt");
   const endsDate = parseDate(endsAt, "endsAt");
 
@@ -49,10 +53,6 @@ export function validateReservationPayload(
   }
 
   const now = new Date();
-
-  if (reservationDate < now) {
-    throw createHttpError("Reservation must be in the future.", 422);
-  }
 
   if (startsDate < now || endsDate < now) {
     throw createHttpError("Reservation times must be in the future.", 422);

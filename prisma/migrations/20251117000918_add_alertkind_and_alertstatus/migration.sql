@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "AlertKind" AS ENUM ('CO2', 'OCCUPANCY_MAX', 'OCCUPANCY_UNEXPECTED');
+
+-- CreateEnum
+CREATE TYPE "AlertStatus" AS ENUM ('OPEN', 'RESOLVED');

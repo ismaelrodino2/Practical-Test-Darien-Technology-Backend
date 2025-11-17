@@ -1,58 +1,59 @@
 import prisma from "../config/prismaClient";
 import { createHttpError } from "../utils/httpError";
-import { MAX_WEEKLY_RESERVATIONS } from "../constants/reservations";
-import { getWeekRange } from "../utils/dateRange";
+import { ReservationPayload } from "../validators/reservationValidator";
 
-export interface ReservationPayload {
-  spaceId: string;
-  locationId?: string;
-  clientEmail: string;
-  reservationAt: Date;
-  startsAt: Date;
-  endsAt: Date;
-}
-
-export interface PaginationParams {
+/**
+ * Lists reservations with pagination
+ */
+export async function listReservations(options: {
   page?: number;
   pageSize?: number;
-}
+}) {
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 10;
+  const skip = (page - 1) * pageSize;
 
-export async function listReservations({
-  page = 1,
-  pageSize = 10,
-}: PaginationParams) {
-  const skip = Math.max(page - 1, 0) * pageSize;
-
-  const [data, total] = await prisma.$transaction([
+  const [reservations, total] = await Promise.all([
     prisma.reservation.findMany({
       skip,
       take: pageSize,
-      orderBy: { reservationAt: "desc" },
       include: {
         space: {
-          include: { location: true },
+          include: {
+            location: true,
+          },
         },
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     }),
     prisma.reservation.count(),
   ]);
 
   return {
-    data,
-    meta: {
+    data: reservations,
+    pagination: {
       page,
       pageSize,
       total,
-      totalPages: Math.ceil(total / pageSize) || 1,
+      totalPages: Math.ceil(total / pageSize),
     },
   };
 }
 
+/**
+ * Gets a reservation by ID
+ */
 export async function getReservationById(id: string) {
   const reservation = await prisma.reservation.findUnique({
     where: { id },
     include: {
-      space: { include: { location: true } },
+      space: {
+        include: {
+          location: true,
+        },
+      },
     },
   });
 
@@ -63,110 +64,175 @@ export async function getReservationById(id: string) {
   return reservation;
 }
 
+/**
+ * Creates a new reservation
+ */
 export async function createReservation(payload: ReservationPayload) {
-  const normalized = await normalizePayload(payload);
+  // Check if space exists
+  const space = await prisma.space.findUnique({
+    where: { id: payload.spaceId },
+  });
 
-  await ensureNoTimeConflict(normalized);
-  await ensureWeeklyLimit(normalized);
+  if (!space) {
+    throw createHttpError("Space not found.", 404);
+  }
+
+  // Check for time conflicts
+  const conflictingReservation = await prisma.reservation.findFirst({
+    where: {
+      spaceId: payload.spaceId,
+      OR: [
+        {
+          AND: [
+            { startsAt: { lte: payload.startsAt } },
+            { endsAt: { gte: payload.startsAt } },
+          ],
+        },
+        {
+          AND: [
+            { startsAt: { lte: payload.endsAt } },
+            { endsAt: { gte: payload.endsAt } },
+          ],
+        },
+        {
+          AND: [
+            { startsAt: { gte: payload.startsAt } },
+            { endsAt: { lte: payload.endsAt } },
+          ],
+        },
+      ],
+    },
+  });
+
+  if (conflictingReservation) {
+    throw createHttpError(
+      "There is already a reservation for this time slot.",
+      409,
+    );
+  }
 
   return prisma.reservation.create({
-    data: normalized,
+    data: {
+      spaceId: payload.spaceId,
+      locationId: payload.locationId ?? space.locationId,
+      clientEmail: payload.clientEmail,
+      reservationAt: payload.reservationAt,
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+    },
     include: {
-      space: { include: { location: true } },
+      space: {
+        include: {
+          location: true,
+        },
+      },
     },
   });
 }
 
+/**
+ * Updates an existing reservation
+ */
 export async function updateReservation(
   id: string,
   payload: ReservationPayload,
 ) {
-  await getReservationById(id);
-  const normalized = await normalizePayload(payload);
-
-  await ensureNoTimeConflict(normalized, id);
-  await ensureWeeklyLimit(normalized, id);
-
-  return prisma.reservation.update({
+  // Check if reservation exists
+  const existingReservation = await prisma.reservation.findUnique({
     where: { id },
-    data: normalized,
-    include: {
-      space: { include: { location: true } },
-    },
-  });
-}
-
-export async function deleteReservation(id: string) {
-  await getReservationById(id);
-  await prisma.reservation.delete({ where: { id } });
-}
-
-async function normalizePayload(
-  payload: ReservationPayload,
-): Promise<ReservationPayload> {
-  const space = await prisma.space.findUnique({
-    where: { id: payload.spaceId },
-    include: { location: true },
   });
 
-  if (!space) {
-    throw createHttpError("Invalid space.", 422);
+  if (!existingReservation) {
+    throw createHttpError("Reservation not found.", 404);
   }
 
-  const locationId = payload.locationId ?? space.locationId;
-
-  return {
-    ...payload,
-    locationId,
-  };
-}
-
-async function ensureNoTimeConflict(
-  payload: ReservationPayload,
-  ignoreReservationId?: string,
-) {
-  const conflict = await prisma.reservation.findFirst({
+  // Check for time conflicts (excluding the reservation itself)
+  const conflictingReservation = await prisma.reservation.findFirst({
     where: {
+      id: { not: id },
       spaceId: payload.spaceId,
-      id: ignoreReservationId ? { not: ignoreReservationId } : undefined,
-      AND: [
-        { startsAt: { lt: payload.endsAt } },
-        { endsAt: { gt: payload.startsAt } },
+      OR: [
+        {
+          AND: [
+            { startsAt: { lte: payload.startsAt } },
+            { endsAt: { gte: payload.startsAt } },
+          ],
+        },
+        {
+          AND: [
+            { startsAt: { lte: payload.endsAt } },
+            { endsAt: { gte: payload.endsAt } },
+          ],
+        },
+        {
+          AND: [
+            { startsAt: { gte: payload.startsAt } },
+            { endsAt: { lte: payload.endsAt } },
+          ],
+        },
       ],
     },
-    select: { id: true },
   });
 
-  if (conflict) {
+  if (conflictingReservation) {
     throw createHttpError(
-      "This space is already reserved in the selected time range.",
+      "There is already a reservation for this time slot.",
       409,
     );
   }
-}
 
-async function ensureWeeklyLimit(
-  payload: ReservationPayload,
-  ignoreReservationId?: string,
-) {
-  const { start, end } = getWeekRange(payload.reservationAt);
-
-  const totalInWeek = await prisma.reservation.count({
-    where: {
+  return prisma.reservation.update({
+    where: { id },
+    data: {
+      spaceId: payload.spaceId,
+      locationId: payload.locationId,
       clientEmail: payload.clientEmail,
-      reservationAt: {
-        gte: start,
-        lt: end,
+      reservationAt: payload.reservationAt,
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+    },
+    include: {
+      space: {
+        include: {
+          location: true,
+        },
       },
-      id: ignoreReservationId ? { not: ignoreReservationId } : undefined,
     },
   });
-
-  if (totalInWeek >= MAX_WEEKLY_RESERVATIONS) {
-    throw createHttpError(
-      `Weekly reservation limit of ${MAX_WEEKLY_RESERVATIONS} exceeded for this client.`,
-      422,
-    );
-  }
 }
 
+/**
+ * Deletes a reservation
+ */
+export async function deleteReservation(id: string) {
+  const reservation = await prisma.reservation.findUnique({
+    where: { id },
+  });
+
+  if (!reservation) {
+    throw createHttpError("Reservation not found.", 404);
+  }
+
+  await prisma.reservation.delete({
+    where: { id },
+  });
+}
+
+/**
+ * Gets active reservations for a space at a specific time
+ */
+export async function getActiveReservations(
+  spaceId: string,
+  date: Date = new Date(),
+) {
+  return prisma.reservation.findMany({
+    where: {
+      spaceId,
+      startsAt: { lte: date },
+      endsAt: { gte: date },
+    },
+    include: {
+      space: true,
+    },
+  });
+}

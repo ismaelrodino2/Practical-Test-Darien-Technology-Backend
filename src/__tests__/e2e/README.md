@@ -42,6 +42,36 @@ https://www.prisma.io/docs/orm/prisma-client/testing/integration-testing
 - `npm run test:e2e:migrate` - Applies migrations to test database
 - `npm run test:e2e:run` - Runs E2E tests
 
+## Quick Start (Manual - Recommended)
+
+To avoid conflicts with the production `.env`, the simplest way is to do it manually:
+
+1. **Start the test database:**
+   ```bash
+   npm run test:e2e:setup
+   ```
+
+2. **Wait a few seconds** for the database to be ready
+
+3. **Temporarily modify the `.env`** - add or change the line:
+   ```
+   DATABASE_URL=postgresql://prisma:prisma@localhost:5433/tests?schema=public
+   ```
+
+4. **Apply migrations:**
+   ```bash
+   npm run test:e2e:migrate
+   ```
+
+5. **Run the tests:**
+   ```bash
+   npm run test:e2e:run
+   ```
+
+6. **Restore the original `.env`** after the tests
+
+**Note:** E2E tests work even if the migration fails (if tables already exist), but it is recommended to apply migrations correctly.
+
 ## Complete Flow
 
 ### Option 1: Helper Scripts (Recommended)

@@ -36,6 +36,17 @@ const connectClient = (): MqttClient => {
 
 export const getMqttClient = (): MqttClient => connectClient();
 
+export const closeMqttClient = async (): Promise<void> => {
+  if (mqttClient) {
+    return new Promise<void>((resolve) => {
+      mqttClient!.end(false, {}, () => {
+        mqttClient = null;
+        resolve();
+      });
+    });
+  }
+};
+
 export default getMqttClient();
 
 
