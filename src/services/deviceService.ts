@@ -1,24 +1,44 @@
 import prisma from "../config/prismaClient";
+import { createHttpError } from "../utils/httpError";
 
 export type DeviceDesiredPayload = {
-  samplingIntervalSec: number;
-  co2_alert_threshold: number;
+  samplingIntervalSec?: number;
+  co2_alert_threshold?: number;
 };
 
 export async function upsertDeviceDesired(
   officeId: string,
   payload: DeviceDesiredPayload,
 ) {
+  // Get current values if some field was not provided
+  const existing = await prisma.deviceDesired.findUnique({
+    where: { officeId },
+  });
+
+  // If it doesn't exist, both fields are required to create
+  if (!existing) {
+    if (payload.samplingIntervalSec === undefined || payload.co2_alert_threshold === undefined) {
+      throw createHttpError(
+        "Both samplingIntervalSec and co2_alert_threshold are required when creating a new device desired configuration.",
+        422,
+      );
+    }
+  }
+
+  // Use provided values or keep existing ones
+  const samplingIntervalSec = payload.samplingIntervalSec ?? existing?.samplingIntervalSec ?? 0;
+  const co2_alert_threshold = payload.co2_alert_threshold ?? existing?.co2_alert_threshold ?? 0;
+
   return prisma.deviceDesired.upsert({
     where: { officeId },
     update: {
-      samplingIntervalSec: payload.samplingIntervalSec,
-      co2_alert_threshold: payload.co2_alert_threshold,
+      samplingIntervalSec,
+      co2_alert_threshold,
     },
     create: {
       officeId,
-      samplingIntervalSec: payload.samplingIntervalSec,
-      co2_alert_threshold: payload.co2_alert_threshold,
+      samplingIntervalSec,
+      co2_alert_threshold,
     },
   });
 }
@@ -104,14 +124,21 @@ export async function publishDesiredToMQTT(
   siteId: string,
   payload: DeviceDesiredPayload,
 ): Promise<void> {
+  // Get complete values from database to publish to MQTT
+  const desired = await getDeviceDesired(officeId);
+  if (!desired) {
+    throw createHttpError("Device desired configuration not found", 404);
+  }
+
   const { getMqttClient } = await import(
     "../integrations/mqtt/mqttClient"
   );
   const mqttClient = getMqttClient();
   const topic = `sites/${siteId}/offices/${officeId}/desired`;
+  // Always publish complete (updated) values to MQTT
   const mqttPayload = {
-    samplingIntervalSec: payload.samplingIntervalSec,
-    co2_alert_threshold: payload.co2_alert_threshold,
+    samplingIntervalSec: desired.samplingIntervalSec,
+    co2_alert_threshold: desired.co2_alert_threshold,
   };
 
   return new Promise<void>((resolve, reject) => {

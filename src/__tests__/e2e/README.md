@@ -44,33 +44,33 @@ https://www.prisma.io/docs/orm/prisma-client/testing/integration-testing
 
 ## Quick Start (Manual - Recommended)
 
-Para evitar conflitos com o `.env` de produção, a forma mais simples é fazer manualmente:
+To avoid conflicts with the production `.env`, the simplest way is to do it manually:
 
-1. **Inicie o banco de teste:**
+1. **Start the test database:**
    ```bash
    npm run test:e2e:setup
    ```
 
-2. **Aguarde alguns segundos** para o banco ficar pronto
+2. **Wait a few seconds** for the database to be ready
 
-3. **Temporariamente altere o `.env`** - adicione ou altere a linha:
+3. **Temporarily modify the `.env`** - add or change the line:
    ```
    DATABASE_URL=postgresql://prisma:prisma@localhost:5433/tests?schema=public
    ```
 
-4. **Aplique as migrations:**
+4. **Apply migrations:**
    ```bash
    npm run test:e2e:migrate
    ```
 
-5. **Rode os testes:**
+5. **Run the tests:**
    ```bash
    npm run test:e2e:run
    ```
 
-6. **Restaure o `.env` original** após os testes
+6. **Restore the original `.env`** after the tests
 
-**Nota:** Os testes E2E funcionam mesmo se a migration falhar (se as tabelas já existirem), mas é recomendado aplicar as migrations corretamente.
+**Note:** E2E tests work even if the migration fails (if tables already exist), but it is recommended to apply migrations correctly.
 
 ## Complete Flow
 

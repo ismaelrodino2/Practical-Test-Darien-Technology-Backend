@@ -11,14 +11,14 @@ export type AlertMeta = {
 };
 
 /**
- * Abre um novo alerta ou retorna o alerta existente se já estiver aberto
+ * Opens a new alert or returns the existing alert if already open
  */
 export async function openAlert(
   officeId: string,
   kind: AlertKind,
   meta: AlertMeta = {},
 ): Promise<{ alert: unknown; isNew: boolean }> {
-  // Verifica se já existe um alerta aberto do mesmo tipo
+  // Check if an open alert of the same type already exists
   const existingAlert = await prisma.alert.findFirst({
     where: {
       officeId,
@@ -28,7 +28,7 @@ export async function openAlert(
   });
 
   if (existingAlert) {
-    // Atualiza metadata se necessário
+    // Update metadata if necessary
     if (JSON.stringify(existingAlert.metaJson) !== JSON.stringify(meta)) {
       await prisma.alert.update({
         where: { id: existingAlert.id },
@@ -38,7 +38,7 @@ export async function openAlert(
     return { alert: existingAlert, isNew: false };
   }
 
-  // Cria novo alerta
+  // Create new alert
   const alert = await prisma.alert.create({
     data: {
       officeId,
@@ -53,7 +53,7 @@ export async function openAlert(
 }
 
 /**
- * Resolve um alerta aberto
+ * Resolves an open alert
  */
 export async function resolveAlert(
   officeId: string,
@@ -81,7 +81,7 @@ export async function resolveAlert(
 }
 
 /**
- * Busca alertas ativos de um office
+ * Gets active alerts for an office
  */
 export async function getActiveAlerts(officeId: string) {
   return prisma.alert.findMany({
@@ -94,7 +94,7 @@ export async function getActiveAlerts(officeId: string) {
 }
 
 /**
- * Busca alerta específico
+ * Gets a specific alert by ID
  */
 export async function getAlertById(id: string) {
   return prisma.alert.findUnique({

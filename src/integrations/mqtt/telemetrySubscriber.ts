@@ -8,8 +8,8 @@ import {
 import { processTelemetry } from "../../services/telemetryProcessor";
 
 /**
- * Extrai siteId e officeId de um tópico MQTT
- * Exemplo: "sites/SITE_A/offices/OFFICE_1/telemetry" -> { siteId: "SITE_A", officeId: "OFFICE_1" }
+ * Extracts siteId and officeId from an MQTT topic
+ * Example: "sites/SITE_A/offices/OFFICE_1/telemetry" -> { siteId: "SITE_A", officeId: "OFFICE_1" }
  */
 function extractSiteAndOffice(topic: string): {
   siteId: string;
@@ -26,7 +26,7 @@ function extractSiteAndOffice(topic: string): {
 }
 
 export const startTelemetrySubscriber = () => {
-  // Usar wildcards para receber de todos os sites e offices
+  // Use wildcards to receive from all sites and offices
   const telemetryTopicPattern = "sites/+/offices/+/telemetry";
   const reportedTopicPattern = "sites/+/offices/+/reported";
   const desiredTopicPattern = "sites/+/offices/+/desired";
@@ -76,10 +76,10 @@ export const startTelemetrySubscriber = () => {
         const parsed = JSON.parse(payload.toString());
         console.log(`[MQTT] Telemetry received from ${siteId}/${officeId}:`, parsed);
         
-        // Processar alertas baseado na telemetria
+        // Process alerts based on telemetry
         await processTelemetry(officeId, parsed);
         
-        // Incluir informações do tópico no payload
+        // Include topic information in the payload
         const enrichedPayload = {
           ...parsed,
           siteId,
@@ -91,7 +91,7 @@ export const startTelemetrySubscriber = () => {
       } catch (error) {
         console.error(`[MQTT] Failed to process telemetry from ${siteId}/${officeId}:`, error);
         console.log(`[MQTT] Telemetry received (raw) from ${siteId}/${officeId}:`, payload.toString());
-        // Para payloads não-JSON, também incluir metadados
+        // For non-JSON payloads, also include metadata
         const enrichedPayload = {
           data: payload.toString(),
           siteId,
@@ -109,13 +109,13 @@ export const startTelemetrySubscriber = () => {
         const parsed = JSON.parse(payload.toString());
         console.log(`[MQTT] Reported state received from ${siteId}/${officeId}:`, parsed);
 
-        // Atualizar device_reported no banco
+        // Update device_reported in database
         await upsertDeviceReported(officeId, {
           samplingIntervalSec: parsed.samplingIntervalSec,
           co2_alert_threshold: parsed.co2_alert_threshold,
         });
 
-        // Comparar com desired e registrar divergências
+        // Compare with desired and log divergences
         const comparison = await compareStates(officeId);
         if (comparison && !comparison.isSynced) {
           console.warn(
@@ -135,7 +135,7 @@ export const startTelemetrySubscriber = () => {
         const parsed = JSON.parse(payload.toString());
         console.log(`[MQTT] Desired state received from ${siteId}/${officeId}:`, parsed);
 
-        // Atualizar device_desired no banco (sync from device)
+        // Update device_desired in database (sync from device)
         await upsertDeviceDesired(officeId, {
           samplingIntervalSec: parsed.samplingIntervalSec,
           co2_alert_threshold: parsed.co2_alert_threshold,

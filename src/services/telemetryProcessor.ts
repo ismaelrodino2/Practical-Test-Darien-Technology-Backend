@@ -7,7 +7,7 @@ import { broadcastAlert } from "../integrations/ws/websocketServer";
 import { isWithinBusinessHours } from "./officeHoursService";
 
 /**
- * Estado de tracking para cada tipo de alerta por office
+ * Tracking state for each alert type per office
  */
 type AlertTrackingState = {
   anomalyStartTime: Date | null;
@@ -21,7 +21,7 @@ type AlertTrackingState = {
 const alertTracking = new Map<string, Map<AlertKind, AlertTrackingState>>();
 
 /**
- * Obtém ou cria o estado de tracking para um office e tipo de alerta
+ * Gets or creates tracking state for an office and alert type
  */
 function getTrackingState(
   officeId: string,
@@ -44,7 +44,7 @@ function getTrackingState(
 }
 
 /**
- * Processa telemetria e detecta/resolve alertas
+ * Processes telemetry and detects/resolves alerts
  */
 export async function processTelemetry(
   officeId: string,
@@ -56,7 +56,7 @@ export async function processTelemetry(
 ): Promise<void> {
   const now = new Date();
 
-  // Processa cada tipo de alerta
+  // Process each alert type
   await Promise.all([
     processCO2Alert(officeId, telemetry, now),
     processOccupancyMaxAlert(officeId, telemetry, now),
@@ -65,9 +65,9 @@ export async function processTelemetry(
 }
 
 /**
- * Alerta 1: CO₂ alto
- * Abrir: co2_ppm > threshold por 5 minutos
- * Resolver: co2_ppm <= threshold por 2 minutos
+ * Alert 1: High CO₂
+ * Open: co2_ppm > threshold for 5 minutes
+ * Resolve: co2_ppm <= threshold for 2 minutes
  */
 async function processCO2Alert(
   officeId: string,
@@ -80,7 +80,7 @@ async function processCO2Alert(
 
   const desired = await getDeviceDesired(officeId);
   if (!desired) {
-    return; // Sem configuração, não pode alertar
+    return; // No configuration, cannot alert
   }
 
   const threshold = desired.co2_alert_threshold;
@@ -91,17 +91,17 @@ async function processCO2Alert(
   const isNormal = telemetry.co2_ppm <= threshold;
 
   if (isAnomaly) {
-    // Anomalia detectada
+    // Anomaly detected
     if (!state.anomalyStartTime) {
       state.anomalyStartTime = now;
       state.normalStartTime = null;
     }
 
     const anomalyDuration = now.getTime() - state.anomalyStartTime.getTime();
-    const minDurationToOpen = 5 * 60 * 1000; // 5 minutos
+    const minDurationToOpen = 5 * 60 * 1000; // 5 minutes
 
     if (anomalyDuration >= minDurationToOpen) {
-      // Abre alerta
+      // Open alert
       const { alert, isNew } = await openAlert(officeId, AlertKind.CO2, {
         co2_ppm: telemetry.co2_ppm,
         threshold,
@@ -117,16 +117,16 @@ async function processCO2Alert(
       }
     }
   } else if (isNormal) {
-    // Condição normal
+    // Normal condition
     if (!state.normalStartTime) {
       state.normalStartTime = now;
     }
 
     const normalDuration = now.getTime() - state.normalStartTime.getTime();
-    const minDurationToResolve = 2 * 60 * 1000; // 2 minutos
+    const minDurationToResolve = 2 * 60 * 1000; // 2 minutes
 
     if (normalDuration >= minDurationToResolve) {
-      // Resolve alerta
+      // Resolve alert
       const resolved = await resolveAlert(officeId, AlertKind.CO2);
       if (resolved) {
         state.anomalyStartTime = null;
@@ -140,15 +140,15 @@ async function processCO2Alert(
       }
     }
 
-    // Reset anomaly start se voltou ao normal
+    // Reset anomaly start if returned to normal
     state.anomalyStartTime = null;
   }
 }
 
 /**
- * Alerta 2: Ocupação máxima excedida
- * Abrir: occupancy > capacity por 2 minutos
- * Resolver: occupancy <= capacity por 1 minuto
+ * Alert 2: Maximum occupancy exceeded
+ * Open: occupancy > capacity for 2 minutes
+ * Resolve: occupancy <= capacity for 1 minute
  */
 async function processOccupancyMaxAlert(
   officeId: string,
@@ -161,7 +161,7 @@ async function processOccupancyMaxAlert(
 
   const space = await getSpaceByOfficeExternalId(officeId);
   if (!space) {
-    return; // Office não encontrado
+    return; // Office not found
   }
 
   const capacity = space.capacity;
@@ -178,7 +178,7 @@ async function processOccupancyMaxAlert(
     }
 
     const anomalyDuration = now.getTime() - state.anomalyStartTime.getTime();
-    const minDurationToOpen = 2 * 60 * 1000; // 2 minutos
+    const minDurationToOpen = 2 * 60 * 1000; // 2 minutes
 
     if (anomalyDuration >= minDurationToOpen) {
       const { alert, isNew } = await openAlert(
@@ -205,7 +205,7 @@ async function processOccupancyMaxAlert(
     }
 
     const normalDuration = now.getTime() - state.normalStartTime.getTime();
-    const minDurationToResolve = 1 * 60 * 1000; // 1 minuto
+    const minDurationToResolve = 1 * 60 * 1000; // 1 minute
 
     if (normalDuration >= minDurationToResolve) {
       const resolved = await resolveAlert(officeId, AlertKind.OCCUPANCY_MAX);
@@ -226,10 +226,10 @@ async function processOccupancyMaxAlert(
 }
 
 /**
- * Alerta 3: Ocupação inesperada
- * 3a) Fora do horário: occupancy > 0 por 10 min
- * 3b) Sem reserva: occupancy > 0 por 10 min dentro do horário sem reserva ativa
- * Resolver: occupancy == 0 por 5 min OU horário volta OU reserva aparece
+ * Alert 3: Unexpected occupancy
+ * 3a) Outside business hours: occupancy > 0 for 10 min
+ * 3b) Without reservation: occupancy > 0 for 10 min within business hours without active reservation
+ * Resolve: occupancy == 0 for 5 min OR business hours return OR reservation appears
  */
 async function processOccupancyUnexpectedAlert(
   officeId: string,
@@ -251,7 +251,7 @@ async function processOccupancyUnexpectedAlert(
   const hasOccupancy = telemetry.occupancy > 0;
   const noOccupancy = telemetry.occupancy === 0;
 
-  // Verifica condições para abrir alerta
+  // Check conditions to open alert
   const withinBusinessHours = await isWithinBusinessHours(officeId, now);
   const activeReservations = await getActiveReservations(space.id, now);
   const hasActiveReserv = activeReservations.length > 0;
@@ -261,11 +261,11 @@ async function processOccupancyUnexpectedAlert(
 
   if (hasOccupancy) {
     if (!withinBusinessHours) {
-      // 3a) Fora do horário laboral
+      // 3a) Outside business hours
       shouldAlert = true;
       reason = "outside_business_hours";
     } else if (!hasActiveReserv) {
-      // 3b) Dentro do horário mas sem reserva
+      // 3b) Within business hours but without reservation
       shouldAlert = true;
       reason = "no_active_reservation";
     }
@@ -278,7 +278,7 @@ async function processOccupancyUnexpectedAlert(
     }
 
     const anomalyDuration = now.getTime() - state.anomalyStartTime.getTime();
-    const minDurationToOpen = 10 * 60 * 1000; // 10 minutos
+    const minDurationToOpen = 10 * 60 * 1000; // 10 minutes
 
     if (anomalyDuration >= minDurationToOpen) {
       const { alert, isNew } = await openAlert(
@@ -302,7 +302,7 @@ async function processOccupancyUnexpectedAlert(
       }
     }
   } else {
-    // Condição para resolver: occupancy == 0 OU horário válido OU reserva ativa
+    // Condition to resolve: occupancy == 0 OR valid business hours OR active reservation
     const shouldResolve =
       noOccupancy ||
       (withinBusinessHours && hasActiveReserv) ||
@@ -314,7 +314,7 @@ async function processOccupancyUnexpectedAlert(
       }
 
       const normalDuration = now.getTime() - state.normalStartTime.getTime();
-      const minDurationToResolve = 5 * 60 * 1000; // 5 minutos
+      const minDurationToResolve = 5 * 60 * 1000; // 5 minutes
 
       if (normalDuration >= minDurationToResolve || noOccupancy) {
         const resolved = await resolveAlert(
@@ -333,11 +333,11 @@ async function processOccupancyUnexpectedAlert(
         }
       }
     } else {
-      // Reset normal start se condição mudou
+      // Reset normal start if condition changed
       state.normalStartTime = null;
     }
 
-    // Reset anomaly start se não deve alertar mais
+    // Reset anomaly start if should not alert anymore
     if (!shouldAlert) {
       state.anomalyStartTime = null;
     }

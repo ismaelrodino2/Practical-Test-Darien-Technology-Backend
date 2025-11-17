@@ -3,7 +3,7 @@ import { createHttpError } from "../utils/httpError";
 import { ReservationPayload } from "../validators/reservationValidator";
 
 /**
- * Lista reservas com paginação
+ * Lists reservations with pagination
  */
 export async function listReservations(options: {
   page?: number;
@@ -43,7 +43,7 @@ export async function listReservations(options: {
 }
 
 /**
- * Busca uma reserva por ID
+ * Gets a reservation by ID
  */
 export async function getReservationById(id: string) {
   const reservation = await prisma.reservation.findUnique({
@@ -65,10 +65,10 @@ export async function getReservationById(id: string) {
 }
 
 /**
- * Cria uma nova reserva
+ * Creates a new reservation
  */
 export async function createReservation(payload: ReservationPayload) {
-  // Verifica se o space existe
+  // Check if space exists
   const space = await prisma.space.findUnique({
     where: { id: payload.spaceId },
   });
@@ -77,7 +77,7 @@ export async function createReservation(payload: ReservationPayload) {
     throw createHttpError("Space not found.", 404);
   }
 
-  // Verifica conflitos de horário
+  // Check for time conflicts
   const conflictingReservation = await prisma.reservation.findFirst({
     where: {
       spaceId: payload.spaceId,
@@ -131,13 +131,13 @@ export async function createReservation(payload: ReservationPayload) {
 }
 
 /**
- * Atualiza uma reserva existente
+ * Updates an existing reservation
  */
 export async function updateReservation(
   id: string,
   payload: ReservationPayload,
 ) {
-  // Verifica se a reserva existe
+  // Check if reservation exists
   const existingReservation = await prisma.reservation.findUnique({
     where: { id },
   });
@@ -146,7 +146,7 @@ export async function updateReservation(
     throw createHttpError("Reservation not found.", 404);
   }
 
-  // Verifica conflitos de horário (excluindo a própria reserva)
+  // Check for time conflicts (excluding the reservation itself)
   const conflictingReservation = await prisma.reservation.findFirst({
     where: {
       id: { not: id },
@@ -202,7 +202,7 @@ export async function updateReservation(
 }
 
 /**
- * Deleta uma reserva
+ * Deletes a reservation
  */
 export async function deleteReservation(id: string) {
   const reservation = await prisma.reservation.findUnique({
@@ -219,7 +219,7 @@ export async function deleteReservation(id: string) {
 }
 
 /**
- * Busca reservas ativas para um space em um determinado momento
+ * Gets active reservations for a space at a specific time
  */
 export async function getActiveReservations(
   spaceId: string,

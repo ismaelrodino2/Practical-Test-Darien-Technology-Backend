@@ -116,7 +116,7 @@ model Alert {
   status      AlertStatus @default(OPEN)
   startedAt   DateTime
   resolvedAt  DateTime?
-  metaJson    Json?       // Detalhes adicionais (valores, thresholds, etc.)
+  metaJson    Json        @default("{}") // Additional details (values, thresholds, etc.)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 

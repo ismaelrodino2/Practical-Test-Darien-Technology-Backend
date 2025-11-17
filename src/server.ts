@@ -9,7 +9,7 @@ const server = app.listen(env.port, () => {
 
 initWebSocketServer(server);
 
-// Inicia subscriber para todos os sites e offices usando wildcards MQTT
+// Start subscriber for all sites and offices using MQTT wildcards
 const stopTelemetrySubscriber = startTelemetrySubscriber();
 
 const gracefulShutdown = () => {

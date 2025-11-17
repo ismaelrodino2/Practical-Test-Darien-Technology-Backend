@@ -1,7 +1,7 @@
 import prisma from "../config/prismaClient";
 
 /**
- * Verifica se um horário está dentro do horário laboral
+ * Checks if a time is within business hours
  */
 export async function isWithinBusinessHours(
   officeId: string,
@@ -12,23 +12,23 @@ export async function isWithinBusinessHours(
   });
 
   if (!officeHours) {
-    // Se não há horário configurado, assume sempre aberto
+    // If no hours configured, assume always open
     return true;
   }
 
-  // Converte data para o timezone do office
+  // Convert date to office timezone
   const tzDate = new Date(
     date.toLocaleString("en-US", { timeZone: officeHours.timezone }),
   );
 
   const currentTime = `${tzDate.getHours().toString().padStart(2, "0")}:${tzDate.getMinutes().toString().padStart(2, "0")}`;
 
-  // Compara horários (formato HH:mm)
+  // Compare times (HH:mm format)
   return currentTime >= officeHours.openTime && currentTime <= officeHours.closeTime;
 }
 
 /**
- * Verifica se há uma reserva ativa no momento
+ * Checks if there is an active reservation at the moment
  */
 export async function hasActiveReservation(
   spaceId: string,
@@ -46,7 +46,7 @@ export async function hasActiveReservation(
 }
 
 /**
- * Cria ou atualiza horário laboral de um office
+ * Creates or updates business hours for an office
  */
 export async function upsertOfficeHours(
   officeId: string,
@@ -67,7 +67,7 @@ export async function upsertOfficeHours(
 }
 
 /**
- * Busca horário laboral de um office
+ * Gets business hours for an office
  */
 export async function getOfficeHours(officeId: string) {
   return prisma.officeHours.findUnique({
