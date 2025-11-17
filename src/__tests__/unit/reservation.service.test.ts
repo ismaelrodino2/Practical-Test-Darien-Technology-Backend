@@ -1,17 +1,12 @@
-import {
-  createReservation,
-  ReservationPayload,
-} from "../../services/reservationService";
+import { createReservation } from "../../services/reservationService";
+import { ReservationPayload } from "../../validators/reservationValidator";
 import prisma from "../../config/prismaClient";
-import { createHttpError } from "../../utils/httpError";
-import { getWeekRange } from "../../utils/dateRange";
 
 jest.mock("../../config/prismaClient", () => ({
   __esModule: true,
   default: {
     reservation: {
       findFirst: jest.fn(),
-      count: jest.fn(),
       create: jest.fn(),
     },
     space: {
@@ -20,13 +15,8 @@ jest.mock("../../config/prismaClient", () => ({
   },
 }));
 
-jest.mock("../../utils/dateRange");
-
 describe("Reservation Service - Unit Tests", () => {
   const mockPrisma = prisma as jest.Mocked<typeof prisma>;
-  const mockGetWeekRange = getWeekRange as jest.MockedFunction<
-    typeof getWeekRange
-  >;
 
   const mockSpace = {
     id: "space-1",
@@ -65,72 +55,51 @@ describe("Reservation Service - Unit Tests", () => {
       );
 
       await expect(createReservation(basePayload)).rejects.toThrow(
-        "This space is already reserved in the selected time range.",
+        "There is already a reservation for this time slot.",
       );
 
       expect(mockPrisma.reservation.findFirst).toHaveBeenCalledWith({
         where: {
           spaceId: "space-1",
-          id: undefined,
-          AND: [
-            { startsAt: { lt: basePayload.endsAt } },
-            { endsAt: { gt: basePayload.startsAt } },
+          OR: [
+            {
+              AND: [
+                { startsAt: { lte: basePayload.startsAt } },
+                { endsAt: { gte: basePayload.startsAt } },
+              ],
+            },
+            {
+              AND: [
+                { startsAt: { lte: basePayload.endsAt } },
+                { endsAt: { gte: basePayload.endsAt } },
+              ],
+            },
+            {
+              AND: [
+                { startsAt: { gte: basePayload.startsAt } },
+                { endsAt: { lte: basePayload.endsAt } },
+              ],
+            },
           ],
-        },
-        select: { id: true },
-      });
-      expect(mockPrisma.reservation.create).not.toHaveBeenCalled();
-    });
-
-    it("should prevent client from making more than 3 reservations in the same week - throw error with 422 status", async () => {
-      const weekStart = new Date("2024-01-15T00:00:00Z");
-      const weekEnd = new Date("2024-01-22T00:00:00Z");
-
-      mockGetWeekRange.mockReturnValue({
-        start: weekStart,
-        end: weekEnd,
-      });
-
-      (mockPrisma.reservation.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockPrisma.reservation.count as jest.Mock).mockResolvedValue(3);
-
-      await expect(createReservation(basePayload)).rejects.toThrow(
-        "Weekly reservation limit of 3 exceeded for this client.",
-      );
-
-      expect(mockPrisma.reservation.count).toHaveBeenCalledWith({
-        where: {
-          clientEmail: "client@example.com",
-          reservationAt: {
-            gte: weekStart,
-            lt: weekEnd,
-          },
-          id: undefined,
         },
       });
       expect(mockPrisma.reservation.create).not.toHaveBeenCalled();
     });
 
     it("should create a valid reservation when there are no conflicts", async () => {
-      const weekStart = new Date("2024-01-15T00:00:00Z");
-      const weekEnd = new Date("2024-01-22T00:00:00Z");
-
-      mockGetWeekRange.mockReturnValue({
-        start: weekStart,
-        end: weekEnd,
-      });
-
       const createdReservation = {
         id: "reservation-1",
         ...basePayload,
         locationId: "location-1",
-        space: mockSpace,
+        space: {
+          ...mockSpace,
+          location: mockSpace.location,
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       (mockPrisma.reservation.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockPrisma.reservation.count as jest.Mock).mockResolvedValue(2);
       (mockPrisma.reservation.create as jest.Mock).mockResolvedValue(
         createdReservation as any,
       );
@@ -139,46 +108,19 @@ describe("Reservation Service - Unit Tests", () => {
 
       expect(result).toEqual(createdReservation);
       expect(mockPrisma.reservation.findFirst).toHaveBeenCalled();
-      expect(mockPrisma.reservation.count).toHaveBeenCalled();
       expect(mockPrisma.reservation.create).toHaveBeenCalledWith({
         data: {
-          ...basePayload,
+          spaceId: basePayload.spaceId,
           locationId: "location-1",
+          clientEmail: basePayload.clientEmail,
+          reservationAt: basePayload.reservationAt,
+          startsAt: basePayload.startsAt,
+          endsAt: basePayload.endsAt,
         },
         include: {
           space: { include: { location: true } },
         },
       });
-    });
-
-    it("should allow reservation when weekly limit is exactly at 2 (below limit)", async () => {
-      const weekStart = new Date("2024-01-15T00:00:00Z");
-      const weekEnd = new Date("2024-01-22T00:00:00Z");
-
-      mockGetWeekRange.mockReturnValue({
-        start: weekStart,
-        end: weekEnd,
-      });
-
-      const createdReservation = {
-        id: "reservation-1",
-        ...basePayload,
-        locationId: "location-1",
-        space: mockSpace,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      (mockPrisma.reservation.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockPrisma.reservation.count as jest.Mock).mockResolvedValue(2);
-      (mockPrisma.reservation.create as jest.Mock).mockResolvedValue(
-        createdReservation as any,
-      );
-
-      const result = await createReservation(basePayload);
-
-      expect(result).toEqual(createdReservation);
-      expect(mockPrisma.reservation.create).toHaveBeenCalled();
     });
   });
 });

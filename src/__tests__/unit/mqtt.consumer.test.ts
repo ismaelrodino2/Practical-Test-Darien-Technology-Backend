@@ -17,6 +17,10 @@ jest.mock("../../integrations/ws/websocketServer", () => ({
   broadcastTelemetry: jest.fn(),
 }));
 
+jest.mock("../../services/telemetryProcessor", () => ({
+  processTelemetry: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe("MQTT Consumer - Unit Tests", () => {
   const mockMqttClient = mqttClient as jest.Mocked<typeof mqttClient>;
   const mockBroadcastTelemetry = broadcastTelemetry as jest.MockedFunction<
@@ -76,7 +80,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       );
     });
 
-    it("should parse JSON telemetry message correctly and broadcast it with metadata", () => {
+    it("should parse JSON telemetry message correctly and broadcast it with metadata", async () => {
       let messageHandler: ((topic: string, payload: Buffer) => void) | null =
         null;
 
@@ -101,7 +105,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       const topic = "sites/SITE_A/offices/OFFICE_1/telemetry";
 
       if (messageHandler) {
-        (messageHandler as (topic: string, payload: Buffer) => void)(
+        await (messageHandler as (topic: string, payload: Buffer) => Promise<void>)(
           topic,
           payload,
         );
@@ -115,7 +119,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       });
     });
 
-    it("should handle invalid JSON gracefully and broadcast raw string", () => {
+    it("should handle invalid JSON gracefully and broadcast raw string", async () => {
       let messageHandler: ((topic: string, payload: Buffer) => void) | null =
         null;
 
@@ -131,7 +135,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       const topic = "sites/SITE_A/offices/OFFICE_1/telemetry";
 
       if (messageHandler) {
-        (messageHandler as (topic: string, payload: Buffer) => void)(
+        await (messageHandler as (topic: string, payload: Buffer) => Promise<void>)(
           topic,
           invalidPayload,
         );
@@ -145,7 +149,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       });
     });
 
-    it("should handle messages from different sites/offices", () => {
+    it("should handle messages from different sites/offices", async () => {
       let messageHandler: ((topic: string, payload: Buffer) => void) | null =
         null;
 
@@ -167,7 +171,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       const differentTopic = "sites/SITE_B/offices/OFFICE_2/telemetry";
 
       if (messageHandler) {
-        (messageHandler as (topic: string, payload: Buffer) => void)(
+        await (messageHandler as (topic: string, payload: Buffer) => Promise<void>)(
           differentTopic,
           payload,
         );
