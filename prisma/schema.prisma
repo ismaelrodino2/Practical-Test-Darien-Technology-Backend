@@ -84,3 +84,45 @@ model DeviceReported {
   @@index([officeId])
   @@map("device_reported")
 }
+
+model OfficeHours {
+  id          String   @id @default(uuid())
+  officeId    String   @unique
+  openTime    String   // HH:mm format
+  closeTime   String   // HH:mm format
+  timezone    String   // IANA timezone (e.g., "America/Sao_Paulo")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([officeId])
+  @@map("office_hours")
+}
+
+enum AlertKind {
+  CO2
+  OCCUPANCY_MAX
+  OCCUPANCY_UNEXPECTED
+}
+
+enum AlertStatus {
+  OPEN
+  RESOLVED
+}
+
+model Alert {
+  id          String      @id @default(uuid())
+  officeId    String
+  kind        AlertKind
+  status      AlertStatus @default(OPEN)
+  startedAt   DateTime
+  resolvedAt  DateTime?
+  metaJson    Json?       // Detalhes adicionais (valores, thresholds, etc.)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([officeId])
+  @@index([status])
+  @@index([kind])
+  @@index([officeId, kind, status])
+  @@map("alerts")
+}

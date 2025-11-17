@@ -60,6 +60,29 @@ export const broadcastTelemetry = (payload: unknown) => {
   });
 };
 
+export type AlertNotification = {
+  type: "alert_opened" | "alert_resolved";
+  officeId: string;
+  kind: string;
+  alert: unknown;
+};
+
+export const broadcastAlert = (notification: AlertNotification) => {
+  if (!wss) {
+    return;
+  }
+
+  const message = JSON.stringify(notification);
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+
+  console.log(`[WS] Alert broadcasted: ${notification.type} - ${notification.kind} for office ${notification.officeId}`);
+};
+
 export default {
   initWebSocketServer,
   broadcastTelemetry,

@@ -55,6 +55,13 @@ export async function deleteSpace(id: string) {
   await prisma.space.delete({ where: { id } });
 }
 
+export async function getSpaceByOfficeExternalId(officeExternalId: string) {
+  return prisma.space.findUnique({
+    where: { officeExternalId },
+    include: { location: true },
+  });
+}
+
 async function ensureLocationExists(locationId: string) {
   const exists = await prisma.location.findUnique({
     where: { id: locationId },

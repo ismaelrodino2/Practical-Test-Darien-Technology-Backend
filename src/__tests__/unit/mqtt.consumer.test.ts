@@ -34,11 +34,21 @@ describe("MQTT Consumer - Unit Tests", () => {
   });
 
   describe("startTelemetrySubscriber", () => {
-    it("should subscribe to the correct topic when connected", () => {
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+    it("should subscribe to wildcard topics when connected", () => {
+      startTelemetrySubscriber();
 
       expect(mockMqttClient.subscribe).toHaveBeenCalledWith(
-        "sites/SITE_A/offices/OFFICE_1/telemetry",
+        "sites/+/offices/+/telemetry",
+        { qos: 0 },
+        expect.any(Function),
+      );
+      expect(mockMqttClient.subscribe).toHaveBeenCalledWith(
+        "sites/+/offices/+/reported",
+        { qos: 0 },
+        expect.any(Function),
+      );
+      expect(mockMqttClient.subscribe).toHaveBeenCalledWith(
+        "sites/+/offices/+/desired",
         { qos: 0 },
         expect.any(Function),
       );
@@ -54,7 +64,7 @@ describe("MQTT Consumer - Unit Tests", () => {
         }
       });
 
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      startTelemetrySubscriber();
 
       expect(mockMqttClient.on).toHaveBeenCalledWith(
         "message",
@@ -66,7 +76,7 @@ describe("MQTT Consumer - Unit Tests", () => {
       );
     });
 
-    it("should parse JSON telemetry message correctly and broadcast it", () => {
+    it("should parse JSON telemetry message correctly and broadcast it with metadata", () => {
       let messageHandler: ((topic: string, payload: Buffer) => void) | null =
         null;
 
@@ -76,14 +86,15 @@ describe("MQTT Consumer - Unit Tests", () => {
         }
       });
 
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      startTelemetrySubscriber();
 
       const telemetryData = {
-        people: 2,
-        co2: 300,
-        humidity: 50,
-        temperature: 25,
-        battery: 90,
+        ts: "2025-10-08T14:30:00Z",
+        temp_c: 24.1,
+        humidity_pct: 49.3,
+        co2_ppm: 930,
+        occupancy: 4,
+        power_w: 120,
       };
 
       const payload = Buffer.from(JSON.stringify(telemetryData));
@@ -96,7 +107,12 @@ describe("MQTT Consumer - Unit Tests", () => {
         );
       }
 
-      expect(mockBroadcastTelemetry).toHaveBeenCalledWith(telemetryData);
+      expect(mockBroadcastTelemetry).toHaveBeenCalledWith({
+        ...telemetryData,
+        siteId: "SITE_A",
+        officeId: "OFFICE_1",
+        topic: "sites/SITE_A/offices/OFFICE_1/telemetry",
+      });
     });
 
     it("should handle invalid JSON gracefully and broadcast raw string", () => {
@@ -109,7 +125,7 @@ describe("MQTT Consumer - Unit Tests", () => {
         }
       });
 
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      startTelemetrySubscriber();
 
       const invalidPayload = Buffer.from("invalid json");
       const topic = "sites/SITE_A/offices/OFFICE_1/telemetry";
@@ -121,10 +137,15 @@ describe("MQTT Consumer - Unit Tests", () => {
         );
       }
 
-      expect(mockBroadcastTelemetry).toHaveBeenCalledWith("invalid json");
+      expect(mockBroadcastTelemetry).toHaveBeenCalledWith({
+        data: "invalid json",
+        siteId: "SITE_A",
+        officeId: "OFFICE_1",
+        topic: "sites/SITE_A/offices/OFFICE_1/telemetry",
+      });
     });
 
-    it("should ignore messages from different topics", () => {
+    it("should handle messages from different sites/offices", () => {
       let messageHandler: ((topic: string, payload: Buffer) => void) | null =
         null;
 
@@ -134,11 +155,12 @@ describe("MQTT Consumer - Unit Tests", () => {
         }
       });
 
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      startTelemetrySubscriber();
 
       const telemetryData = {
-        people: 2,
-        co2: 300,
+        ts: "2025-10-08T14:30:00Z",
+        temp_c: 24.1,
+        occupancy: 2,
       };
 
       const payload = Buffer.from(JSON.stringify(telemetryData));
@@ -151,11 +173,17 @@ describe("MQTT Consumer - Unit Tests", () => {
         );
       }
 
-      expect(mockBroadcastTelemetry).not.toHaveBeenCalled();
+      // Should broadcast with different site/office info
+      expect(mockBroadcastTelemetry).toHaveBeenCalledWith({
+        ...telemetryData,
+        siteId: "SITE_B",
+        officeId: "OFFICE_2",
+        topic: "sites/SITE_B/offices/OFFICE_2/telemetry",
+      });
     });
 
     it("should return cleanup function that unsubscribes and removes listeners", () => {
-      const cleanup = startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      const cleanup = startTelemetrySubscriber();
 
       expect(cleanup).toBeInstanceOf(Function);
 
@@ -170,14 +198,20 @@ describe("MQTT Consumer - Unit Tests", () => {
         expect.any(Function),
       );
       expect(mockMqttClient.unsubscribe).toHaveBeenCalledWith(
-        "sites/SITE_A/offices/OFFICE_1/telemetry",
+        "sites/+/offices/+/telemetry",
+      );
+      expect(mockMqttClient.unsubscribe).toHaveBeenCalledWith(
+        "sites/+/offices/+/reported",
+      );
+      expect(mockMqttClient.unsubscribe).toHaveBeenCalledWith(
+        "sites/+/offices/+/desired",
       );
     });
 
     it("should not subscribe if client is not connected", () => {
       mockMqttClient.connected = false;
 
-      startTelemetrySubscriber("SITE_A", "OFFICE_1");
+      startTelemetrySubscriber();
 
       expect(mockMqttClient.subscribe).not.toHaveBeenCalled();
     });
